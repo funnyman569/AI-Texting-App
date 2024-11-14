@@ -1,0 +1,82 @@
+﻿@page "/"
+@using System.Text
+@using System.Net.Http
+@using Newtonsoft.Json
+@using System.Runtime.InteropServices;
+<PageTitle>Chatbot</PageTitle>
+
+<div class="container">
+    <div class="row">
+        <div class="col-4">
+            <p>@testing</p>
+        </div>
+        <div class="col-4">
+            <div class="messages">
+                @for (int i = 0; i < messages.Count; i++)
+                {
+                    @if (i % 2 == 0)
+                    {
+                        <div class="question">@messages[i]</div>
+                    } else
+                    {
+                        <div class="response">@messages[i]</div>
+                    }
+                }
+                
+            </div>
+            <div class="textMessage">
+                <input @bind="message" />
+                <button @onclick="SendMessage">Send</button>
+            </div>
+        </div>
+        <div class="col-4">
+        </div>
+
+    </div>
+</div>
+
+
+
+@code{
+    public string ?message;
+    public string ?testing;
+    public List<string> messages = new();
+    private static HttpClient Http = new HttpClient();
+
+    public async Task SendMessage()
+    {
+        Http = new HttpClient();
+        messages.Add(message);
+        var apiKey = "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";
+        Http.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
+
+        var jsonContent = new
+        {
+            model = "gpt-3.5-turbo",
+            messages = new[]
+                {
+                    new { role = "user", content = message }
+                },
+            max_tokens = 1000
+        };
+
+        var responseContent = await Http.PostAsync("https://api.openai.com/v1/chat/completions", 
+            new StringContent(JsonConvert.SerializeObject(jsonContent), Encoding.UTF8, "application/json"));
+
+        var resContext = await responseContent.Content.ReadAsStringAsync();
+        var data = JsonConvert.DeserializeObject<dynamic>(resContext);
+
+        if (data?.choices != null && data.choices.Count > 0)
+            {
+                messages.Add(data.choices[0].message.content.ToString());
+            }
+        else
+            {
+                messages.Add("No response received from the API.");
+            }
+
+        message = string.Empty;
+        StateHasChanged();
+    
+    }
+}    
